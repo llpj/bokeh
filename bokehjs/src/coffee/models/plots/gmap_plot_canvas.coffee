@@ -33,7 +33,6 @@ export class GMapPlotCanvasView extends PlotCanvasView
     @y_range.setv({start: proj_ystart, end: proj_yend})
 
   update_range: (range_info) ->
-    @pause()
     # PAN ----------------------------
     if range_info.sdx? or range_info.sdy?
       @map.panBy(range_info.sdx, range_info.sdy)
@@ -42,6 +41,7 @@ export class GMapPlotCanvasView extends PlotCanvasView
 
     # ZOOM ---------------------------
     if range_info.factor?
+      @pause()
 
       # The zoom count decreases the sensitivity of the zoom. (We could make this user configurable)
       if @zoom_count != 10
@@ -68,10 +68,11 @@ export class GMapPlotCanvasView extends PlotCanvasView
         if ( proj_xend - proj_xstart ) < 0
           @map.setZoom(original_map_zoom)
 
+      @unpause()
+
       # Finally re-center
       @setRanges()
     # END ZOOM ---------------------
-    @unpause()
 
   bind_bokeh_events: () ->
     super()
@@ -108,7 +109,15 @@ export class GMapPlotCanvasView extends PlotCanvasView
 
       # Create the map with above options in div
       @map = new maps.Map(@canvas_view.map_div[0], map_options)
-      maps.event.addListenerOnce(@map, 'idle', @setRanges)
+      maps.event.addListener(@map, 'idle', @setRanges)
+      # maps.event.addListener(@map, 'bounds_changed', @setRanges)
+      # maps.event.addListener(@map, 'center_changed', @setRanges)
+      # maps.event.addListener(@map, 'zoom_changed', @setRanges)
+      @listenTo(@model.plot.map_options, 'change:styles', () => @_update_styles())
+      @listenTo(@model.plot.map_options, 'change:lat', () => @_update_center('lat'))
+      @listenTo(@model.plot.map_options, 'change:lng', () => @_update_center('lng'))
+      @listenTo(@model.plot.map_options, 'change:zoom', () => @_update_zoom())
+      @listenTo(@model.plot.map_options, 'change:map_type', () => @_update_map_type())
 
     if not window._bokeh_gmap_loads?
       window._bokeh_gmap_loads = []
@@ -126,6 +135,29 @@ export class GMapPlotCanvasView extends PlotCanvasView
       script.type = 'text/javascript'
       script.src = "https://maps.googleapis.com/maps/api/js?key=#{@model.plot.api_key}&callback=_bokeh_gmap_callback"
       document.body.appendChild(script)
+
+  _update_styles: () ->
+    @map.setOptions({styles: JSON.parse(@model.plot.map_options.styles) })
+
+  _update_center: (fld) ->
+    c = @map.getCenter().toJSON()
+    c[fld] = @model.plot.map_options[fld]
+    @map.setCenter(c)
+    # relying on GMap events seem to cause flicker, update directly
+    #@setRanges()
+
+  _update_zoom: () ->
+    @map.setOptions({zoom: @model.plot.map_options.zoom})
+
+  _update_map_type: () ->
+    maps = window.google.maps
+    map_types = {
+      "satellite": maps.MapTypeId.SATELLITE,
+      "terrain": maps.MapTypeId.TERRAIN,
+      "roadmap": maps.MapTypeId.ROADMAP,
+      "hybrid": maps.MapTypeId.HYBRID
+    }
+    @map.setOptions({mapTypeId: map_types[@model.plot.map_options.map_type] })
 
   _map_hook: (ctx, frame_box) ->
     [left, top, width, height] = frame_box

@@ -6,15 +6,15 @@ from __future__ import absolute_import
 from ..core import validation
 from ..core.validation.warnings import MISSING_RENDERERS, NO_DATA_RENDERERS
 from ..core.validation.errors import REQUIRED_RANGE, MISSING_GOOGLE_API_KEY
-from ..core.has_props import HasProps
 from ..core.properties import abstract
 from ..core.properties import Enum, Float, Instance, Int, JSON, Override, String
 from ..core.enums import MapType
+from ..model import Model
 
 from .plots import Plot
 
 @abstract
-class MapOptions(HasProps):
+class MapOptions(Model):
     """ Abstract base class for map options' models.
 
     """
