@@ -4,7 +4,8 @@ var fs = require('fs');
 
 var url = system.args[1];
 var png = system.args[2];
-var wait = system.args[3];
+var local_wait = 1000;
+var global_wait = system.args[3];
 var width = system.args[4];
 var height = system.args[5];
 
@@ -50,23 +51,45 @@ page.onResourceReceived = function(response) {
 page.viewportSize = { width: width, height: height };
 
 page.open(url, function(status) {
-    page.evaluate(function() {
-        document.body.bgColor = 'white';
+  page.evaluate(function() {
+    document.body.bgColor = 'white';
+
+    window.addEventListener("bokeh:canvas:init", function() {
+      window.callPhantom('working');
     });
 
-    // TODO: get notified when Bokeh finished rendering
-    window.setTimeout(function() {
-        if (png !== undefined) {
-            page.render(png);
-        }
+    window.addEventListener("bokeh:render:end", function() {
+      window.callPhantom('working');
+    });
+  });
 
-        console.log(JSON.stringify({
-            status: status,
-            errors: errors,
-            messages: messages,
-            resources: resources,
-        }));
+  function finalize(timeout) {
+    if (png !== undefined) {
+      page.render(png);
+    }
 
-        phantom.exit();
-    }, wait);
+    console.log(JSON.stringify({
+      status: status,
+      timeout: timeout,
+      errors: errors,
+      messages: messages,
+      resources: resources,
+    }));
+
+    phantom.exit();
+  }
+
+  var id = null;
+
+  page.onCallback = function(data) {
+    if (data === 'working') {
+      if (id != null) {
+        clearTimeout(id);
+      }
+
+      id = setTimeout(function() { finalize(false); }, local_wait);
+    }
+  };
+
+  setTimeout(function() { finalize(true); }, global_wait);
 });

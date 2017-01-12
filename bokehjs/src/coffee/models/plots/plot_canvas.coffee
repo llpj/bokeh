@@ -567,6 +567,10 @@ export class PlotCanvasView extends BokehView
         @model.document._unrendered_plots = null
         _.delay(@model.document.resize.bind(@model.document), 1)
 
+    if window.CustomEvent?
+      event = new CustomEvent("bokeh:render:end", {detail: @})
+      window.dispatchEvent(event)
+
   resize: () ->
     # Set the plot and canvas to the current model's size
     # This gets called upon solver resize events

@@ -44,6 +44,10 @@ export class CanvasView extends BokehView
     @set_dims([@model.initial_width, @model.initial_height])
     logger.debug("CanvasView initialized")
 
+    if window.CustomEvent?
+      event = new CustomEvent("bokeh:canvas:init", {detail: @})
+      window.dispatchEvent(event)
+
   get_canvas_element: () ->
     return @$el.find('canvas.bk-canvas')[0]
 
