@@ -47,7 +47,6 @@ branches:
 before_install:
   - export PATH="$HOME/miniconda/bin:$PATH"
   - export PATH="$HOME/build/bokeh/bokeh/bokehjs/node_modules/phantomjs-prebuilt/bin:$PATH"
-  - echo $TRAVIS_BUILD_NUMBER > __travis_build_number__.txt
   - export TRAVIS_COMMIT_MSG="$(git log --format=%B --no-merges -n 1)"
   - if [[ -z "${SAUCE_USERNAME}" ]] || [[ -z "${SAUCE_ACCESS_KEY}" ]]; then echo "External committer, not using saucelabs"; else export SAUCELABS=true; fi
 
@@ -74,6 +73,18 @@ script:
   # Linting
   - if [[ -z "$TRAVIS_TAG" && "$GROUP" == flake_docs ]]; then
       py.test -m quality ;
+    fi
+  # Build conda package
+  - if [[ -z "$TRAVIS_TAG" && "$GROUP" == flake_docs ]]; then
+      CONDA_PY="${TRAVIS_PYTHON_VERSION/./}" conda build --quiet --no-test conda.recipe;
+      LINUX64_DIR="$HOME/miniconda/conda-bld/linux-64";
+      echo "linux-64 build output contents:";
+      ls -l $LINUX64_DIR;
+      BUILD_FILE_COUNT="$(ls $LINUX64_DIR | wc -l)";
+      if [ $BUILD_FILE_COUNT != 3 ]; then
+         echo "linux-64 build has wrong number of files";
+         exit 1;
+      fi
     fi
   # Build docs
   - if [[ -z "$TRAVIS_TAG" && "$GROUP" == flake_docs ]]; then
